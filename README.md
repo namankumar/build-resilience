@@ -2,6 +2,8 @@
 
 This repository contains the code for a mobile-first behavior change app. The project uses React Native for a shared iOS/Android codebase and a FastAPI backend hosted on Fly.io.
 
+Contributor guidelines are in `AGENTS.md`.
+
 ## Directory Structure
 
 - `frontend/` – React Native application (to be initialized with Expo or React Native CLI).
