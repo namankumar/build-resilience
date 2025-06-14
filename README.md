@@ -32,11 +32,18 @@ poetry run pytest
 
 ## Frontend
 
-The `frontend` directory contains a simple Expo project with placeholder screens.
+The `frontend` directory contains the Expo-based mobile app that talks to the FastAPI backend.
 To run it locally:
 
 ```bash
 cd frontend
 npm install
 npm start
+```
+
+To share the app, install the Expo CLI and publish:
+
+```bash
+npm install -g expo-cli
+expo publish
 ```
