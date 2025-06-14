@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+.env
+venv/
+
+# Node/React Native
+node_modules/
+.expo/
+.expo-shared/
+android/
+ios/
+
+# General
+.DS_Store
