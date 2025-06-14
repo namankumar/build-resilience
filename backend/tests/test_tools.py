@@ -6,6 +6,7 @@ from app.main import reflections, wins, Reflection
 
 
 def test_tools():
+    """Validate ``user_history_fingerprint`` and ``suggested_wins`` helpers."""
     reflections[1] = Reflection(id=1, text="first", mood=None)
     reflections[2] = Reflection(id=2, text="second", mood=None)
     wins.clear()
