@@ -2,6 +2,8 @@
 
 This repository contains the code for a mobile-first behavior change app. The project uses React Native for a shared iOS/Android codebase and a FastAPI backend hosted on Fly.io.
 
+Contributor guidelines are in `AGENTS.md`.
+
 ## Directory Structure
 
 - `frontend/` – React Native application (to be initialized with Expo or React Native CLI).
@@ -20,13 +22,12 @@ The backend will also expose internal tools for GPT-powered agents, such as the 
 
 ## Testing
 
-Run backend tests using `pytest`:
-
+Run backend tests using Poetry:
 
 ```bash
 cd backend
-pip install -r requirements.txt
-pytest
+poetry install --no-root
+poetry run pytest
 ```
 
 ## Frontend
