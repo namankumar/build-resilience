@@ -22,13 +22,12 @@ The backend will also expose internal tools for GPT-powered agents, such as the 
 
 ## Testing
 
-Run backend tests using `pytest`:
-
+Run backend tests using Poetry:
 
 ```bash
 cd backend
-pip install -r requirements.txt
-pytest
+poetry install --no-root
+poetry run pytest
 ```
 
 ## Frontend

@@ -1,6 +1,7 @@
-Use pip for backend dependencies. After modifying the backend, run:
+Use Poetry for backend dependencies. After modifying the backend, run:
 
 ```
-pip install -r backend/requirements.txt
-pytest -q
+cd backend
+poetry install --no-root
+poetry run pytest -q
 ```
