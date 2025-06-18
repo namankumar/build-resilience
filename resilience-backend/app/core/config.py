@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     # Database
     supabase_url: str = ""
     supabase_service_key: str = ""
+    supabase_anon_key: str = ""
     
     # AI Models
     anthropic_api_key: str = ""
