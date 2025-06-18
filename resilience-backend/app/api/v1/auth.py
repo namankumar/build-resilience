@@ -2,10 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer
 from pydantic import BaseModel, EmailStr
 from typing import Optional
-from app.core.security import create_access_token, get_current_user
+from app.core.security import get_current_user
 from app.core.database import get_supabase
-from datetime import timedelta
-from app.core.config import settings
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 security = HTTPBearer()
@@ -20,13 +18,12 @@ class UserSignIn(BaseModel):
     password: str
 
 class AuthResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
+    message: str
     user: dict
 
 @router.post("/signup", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
 async def sign_up(user_data: UserSignUp):
-    """Sign up a new user"""
+    """Sign up a new user - returns user info, client should use Supabase tokens"""
     try:
         supabase = get_supabase()
         
@@ -45,15 +42,8 @@ async def sign_up(user_data: UserSignUp):
                 detail="Failed to create user"
             )
         
-        # Create access token
-        access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
-        access_token = create_access_token(
-            data={"sub": auth_response.user.id}, 
-            expires_delta=access_token_expires
-        )
-        
         return AuthResponse(
-            access_token=access_token,
+            message="User created successfully",
             user={
                 "id": auth_response.user.id,
                 "email": auth_response.user.email,
@@ -71,7 +61,7 @@ async def sign_up(user_data: UserSignUp):
 
 @router.post("/signin", response_model=AuthResponse)
 async def sign_in(user_data: UserSignIn):
-    """Sign in an existing user"""
+    """Sign in an existing user - returns user info, client should use Supabase tokens"""
     try:
         supabase = get_supabase()
         
@@ -87,15 +77,8 @@ async def sign_in(user_data: UserSignIn):
                 detail="Invalid credentials"
             )
         
-        # Create access token
-        access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
-        access_token = create_access_token(
-            data={"sub": auth_response.user.id}, 
-            expires_delta=access_token_expires
-        )
-        
         return AuthResponse(
-            access_token=access_token,
+            message="Signed in successfully",
             user={
                 "id": auth_response.user.id,
                 "email": auth_response.user.email,
