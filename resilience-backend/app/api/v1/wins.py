@@ -52,12 +52,46 @@ async def create_custom_win(
             detail=f"Database error: {str(e)}"
         )
 
+@router.get("/suggest", response_model=List[WinResponse])
+async def get_suggested_wins_get(
+    reflection_id: str,
+    mood: int = 5,
+    exclude_recent: bool = True,
+    current_user: str = Depends(get_current_user)
+):
+    """Get AI-suggested wins based on reflection (GET version for frontend)"""
+    try:
+        from uuid import UUID
+        
+        # Create request object from query parameters
+        request = WinSuggestionRequest(
+            reflection_id=UUID(reflection_id),
+            mood_intensity=mood,
+            exclude_recent=exclude_recent
+        )
+        
+        # Call the main suggestion logic
+        return await generate_suggested_wins_logic(request, current_user)
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error generating suggestions: {str(e)}"
+        )
+
 @router.post("/suggest", response_model=List[WinResponse])
-async def get_suggested_wins(
+async def get_suggested_wins_post(
     request: WinSuggestionRequest,
     current_user: str = Depends(get_current_user)
 ):
-    """Get AI-suggested wins based on reflection"""
+    """Get AI-suggested wins based on reflection (POST version)"""
+    return await generate_suggested_wins_logic(request, current_user)
+
+async def generate_suggested_wins_logic(
+    request: WinSuggestionRequest,
+    current_user: str
+):
+    """Shared logic for generating suggested wins"""
     try:
         supabase = get_supabase()
         
@@ -78,38 +112,48 @@ async def get_suggested_wins(
         past_wins = []
         if request.exclude_recent:
             completions_response = supabase.table("win_completions").select(
-                "wins(title, category)"
+                "win_id"
             ).eq("user_id", current_user).order(
                 "completed_at", desc=True
             ).limit(10).execute()
             
-            past_wins = [
-                f"{comp['wins']['title']} ({comp['wins']['category']})" 
-                for comp in completions_response.data if comp.get('wins')
-            ]
+            # Get win details for context
+            if completions_response.data:
+                win_ids = [comp["win_id"] for comp in completions_response.data]
+                wins_response = supabase.table("wins").select("title, category").in_(
+                    "id", win_ids
+                ).execute()
+                
+                past_wins = [
+                    f"{win['title']} ({win['category']})" 
+                    for win in wins_response.data
+                ]
         
-        # Generate AI suggestions
-        win_generator = WinGeneratorAgent()
-        suggested_wins = await win_generator.generate_wins(
-            reflection["content"],
-            mood_intensity=request.mood_intensity or reflection.get("mood_intensity"),
-            user_context={"past_successful_wins": past_wins}
-        )
+        # Generate AI suggestions (with fallback)
+        try:
+            win_generator = WinGeneratorAgent()
+            suggested_wins = await win_generator.generate_wins(
+                reflection["content"],
+                mood_intensity=request.mood_intensity or reflection.get("mood_intensity"),
+                user_context={"past_successful_wins": past_wins}
+            )
+        except Exception as ai_error:
+            print(f"⚠️  AI service unavailable, using fallback wins: {ai_error}")
+            # Fallback to predefined wins based on mood
+            mood_intensity = request.mood_intensity or reflection.get("mood_intensity", 5)
+            suggested_wins = get_fallback_wins(mood_intensity)
         
         # Convert to WinResponse format and save as system wins
         win_responses = []
         for suggested_win in suggested_wins:
             win_data = {
-                "id": str(uuid4()),
                 "user_id": current_user,
                 "title": suggested_win["title"],
                 "description": suggested_win["description"],
                 "category": suggested_win["category"],
                 "estimated_minutes": suggested_win["estimated_minutes"],
                 "is_custom": False,
-                "usage_count": 0,
-                "created_at": datetime.utcnow().isoformat(),
-                "updated_at": datetime.utcnow().isoformat()
+                "usage_count": 0
             }
             
             # Save suggested win
@@ -126,6 +170,75 @@ async def get_suggested_wins(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error generating suggestions: {str(e)}"
         )
+
+def get_fallback_wins(mood_intensity: int):
+    """Fallback wins when AI service is unavailable"""
+    if mood_intensity <= 3:
+        # Low mood - gentle activities
+        return [
+            {
+                "title": "Take 5 deep breaths",
+                "description": "Focus on slow, calming breaths to center yourself",
+                "category": "mindfulness",
+                "estimated_minutes": 3
+            },
+            {
+                "title": "Listen to a favorite song",
+                "description": "Put on something that brings you comfort",
+                "category": "self-care", 
+                "estimated_minutes": 5
+            },
+            {
+                "title": "Write down one thing you're grateful for",
+                "description": "Find something small to appreciate today",
+                "category": "mindfulness",
+                "estimated_minutes": 2
+            }
+        ]
+    elif mood_intensity <= 6:
+        # Neutral mood - balanced activities
+        return [
+            {
+                "title": "Take a 10-minute walk",
+                "description": "Get some fresh air and light movement",
+                "category": "movement",
+                "estimated_minutes": 10
+            },
+            {
+                "title": "Organize one small space",
+                "description": "Tidy up your desk or a drawer",
+                "category": "productivity",
+                "estimated_minutes": 15
+            },
+            {
+                "title": "Call or text a friend",
+                "description": "Reach out to someone you care about",
+                "category": "connection",
+                "estimated_minutes": 10
+            }
+        ]
+    else:
+        # Good mood - more energetic activities
+        return [
+            {
+                "title": "Do 20 jumping jacks",
+                "description": "Get your blood flowing with quick exercise",
+                "category": "movement",
+                "estimated_minutes": 5
+            },
+            {
+                "title": "Plan something fun for this week",
+                "description": "Schedule an activity you're looking forward to",
+                "category": "productivity",
+                "estimated_minutes": 10
+            },
+            {
+                "title": "Learn something new for 10 minutes",
+                "description": "Watch a tutorial or read about a topic you're curious about",
+                "category": "learning",
+                "estimated_minutes": 10
+            }
+        ]
 
 @router.post("/complete", response_model=WinCompletionResponse, status_code=status.HTTP_201_CREATED)
 async def complete_win(
@@ -167,13 +280,40 @@ async def complete_win(
             )
         
         # Update win usage count and last used
+        current_usage = win_response.data[0].get("usage_count", 0) or 0
         supabase.table("wins").update({
-            "usage_count": win_response.data[0]["usage_count"] + 1,
+            "usage_count": current_usage + 1,
             "last_used_at": datetime.utcnow().isoformat()
         }).eq("id", str(completion.win_id)).execute()
         
-        # Update user streak (using database function)
-        supabase.rpc("update_user_streak", {"p_user_id": current_user}).execute()
+        # Update user streak (manual implementation since function doesn't exist)
+        try:
+            # Get or create streak record
+            streak_response = supabase.table("streaks").select("*").eq(
+                "user_id", current_user
+            ).execute()
+            
+            if streak_response.data:
+                # Update existing streak
+                current_streak = streak_response.data[0]["current_streak"] + 1
+                longest_streak = max(streak_response.data[0]["longest_streak"], current_streak)
+                
+                supabase.table("streaks").update({
+                    "current_streak": current_streak,
+                    "longest_streak": longest_streak,
+                    "last_activity_date": datetime.utcnow().date().isoformat()
+                }).eq("user_id", current_user).execute()
+            else:
+                # Create initial streak
+                supabase.table("streaks").insert({
+                    "user_id": current_user,
+                    "current_streak": 1,
+                    "longest_streak": 1,
+                    "last_activity_date": datetime.utcnow().date().isoformat()
+                }).execute()
+        except Exception as streak_error:
+            # Don't fail the entire completion if streak update fails
+            print(f"⚠️  Streak update failed: {streak_error}")
         
         return WinCompletionResponse(**response.data[0])
         
@@ -201,7 +341,7 @@ async def get_user_wins(
         if custom_only:
             query = query.eq("is_custom", True)
         
-        response = query.order("last_used_at", desc=True, nulls_first=False).order(
+        response = query.order("last_used_at", desc=True).order(
             "created_at", desc=True
         ).range(offset, offset + limit - 1).execute()
         

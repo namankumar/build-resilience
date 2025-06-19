@@ -14,6 +14,12 @@ async def get_current_streak(
     try:
         supabase = get_supabase()
         
+        if not supabase:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database service unavailable"
+            )
+        
         # Get or create streak record
         response = supabase.table("streaks").select("*").eq(
             "user_id", current_user

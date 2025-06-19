@@ -18,14 +18,29 @@ async def create_reflection(
         supabase = get_supabase()
         
         reflection_data = {
-            "id": str(uuid4()),
             "user_id": current_user,
             "content": reflection.content,
-            "mood_emoji": reflection.mood_emoji,
-            "mood_intensity": reflection.mood_intensity,
-            "created_at": datetime.utcnow().isoformat(),
-            "updated_at": datetime.utcnow().isoformat()
         }
+        
+        # Add mood_emoji if provided
+        if reflection.mood_emoji is not None:
+            reflection_data["mood_emoji"] = reflection.mood_emoji
+        
+        # Add mood_intensity if provided (now stored directly)
+        if reflection.mood_intensity is not None:
+            reflection_data["mood_intensity"] = reflection.mood_intensity
+            
+            # Also map to mood enum for backward compatibility
+            if reflection.mood_intensity <= 2:
+                reflection_data["mood"] = "very_negative"
+            elif reflection.mood_intensity <= 4:
+                reflection_data["mood"] = "negative" 
+            elif reflection.mood_intensity <= 6:
+                reflection_data["mood"] = "neutral"
+            elif reflection.mood_intensity <= 8:
+                reflection_data["mood"] = "positive"
+            else:
+                reflection_data["mood"] = "very_positive"
         
         response = supabase.table("reflections").insert(reflection_data).execute()
         
@@ -35,7 +50,17 @@ async def create_reflection(
                 detail="Failed to create reflection"
             )
         
-        return ReflectionResponse(**response.data[0])
+        # Map database response to model format
+        db_reflection = response.data[0]
+        model_data = {
+            "id": db_reflection["id"],
+            "content": db_reflection["content"],
+            "mood_emoji": db_reflection.get("mood_emoji"),
+            "mood_intensity": db_reflection.get("mood_intensity"),
+            "created_at": db_reflection["created_at"]
+        }
+        
+        return ReflectionResponse(**model_data)
         
     except Exception as e:
         raise HTTPException(
@@ -57,7 +82,19 @@ async def get_user_reflections(
             "user_id", current_user
         ).order("created_at", desc=True).range(offset, offset + limit - 1).execute()
         
-        return [ReflectionResponse(**item) for item in response.data]
+        # Map database responses to model format
+        reflections = []
+        for item in response.data:
+            model_data = {
+                "id": item["id"],
+                "content": item["content"],
+                "mood_emoji": item.get("mood_emoji"),
+                "mood_intensity": item.get("mood_intensity"),
+                "created_at": item["created_at"]
+            }
+            reflections.append(ReflectionResponse(**model_data))
+        
+        return reflections
         
     except Exception as e:
         raise HTTPException(

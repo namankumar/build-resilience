@@ -1,60 +1,64 @@
-from datetime import datetime, timedelta
 from typing import Optional
 from fastapi import HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from app.core.config import settings
-from app.core.database import get_supabase
-from supabase import create_client
 import jwt
+import requests
+from app.core.config import settings
 
 security = HTTPBearer()
-
-def get_anon_supabase():
-    """Get Supabase client with anon key for token validation"""
-    anon_key = settings.supabase_anon_key or "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ6aW5nemtkc3Znc2lmY2Ztc3ZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAwNDg5NTMsImV4cCI6MjA2NTYyNDk1M30._nD9ZzgHnfhKNoQmfbo7i5tSxzEarG16H3Qw2D9BW9Q"
-    return create_client(settings.supabase_url, anon_key)
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ) -> str:
-    """Get current user from Supabase JWT token"""
+    """Validate Supabase JWT token and return user ID"""
     token = credentials.credentials
     
     try:
-        # Decode the JWT to extract user info
-        # Supabase user tokens contain user ID in 'sub' field
-        decoded = jwt.decode(token, options={"verify_signature": False})
+        # Decode JWT without verification to get basic info
+        decoded_token = jwt.decode(token, options={"verify_signature": False})
         
-        # Check if this is a user token (has 'sub' field)
-        user_id = decoded.get("sub")
-        role = decoded.get("role", "")
-        
-        print(f"🔍 Token debug - Role: {role}, User ID: {user_id}")
-        
-        if not user_id or role == "anon":
+        # Check if token has required fields
+        if not decoded_token.get('sub') or not decoded_token.get('role'):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Authentication required - please sign in",
+                detail="Invalid token structure",
                 headers={"WWW-Authenticate": "Bearer"},
             )
         
-        # For now, trust the JWT if it has a user ID
-        # In production, you'd want to verify the signature
-        # with Supabase's JWT secret
+        # Check if token is for an authenticated user
+        if decoded_token.get('role') != 'authenticated':
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid user role",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        # Verify token is from correct issuer
+        expected_issuer = f"{settings.supabase_url}/auth/v1"
+        if decoded_token.get('iss') != expected_issuer:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token issuer",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        # For production, you would verify the JWT signature here
+        # For now, we trust the token if structure is correct
+        user_id = decoded_token.get('sub')
         
         return user_id
         
     except jwt.DecodeError:
-        print(f"❌ JWT decode error")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token format",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"❌ Auth error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
+            detail="Authentication failed",
             headers={"WWW-Authenticate": "Bearer"},
         )
