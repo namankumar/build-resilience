@@ -376,3 +376,61 @@ async def get_win_completions(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Database error: {str(e)}"
         )
+
+@router.get("/{win_id}", response_model=WinResponse)
+async def get_win_by_id(
+    win_id: str,
+    current_user: str = Depends(get_current_user)
+):
+    """Get a specific win by ID"""
+    try:
+        supabase = get_supabase()
+        
+        response = supabase.table("wins").select("*").eq("id", win_id).eq(
+            "user_id", current_user
+        ).execute()
+        
+        if not response.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Win not found"
+            )
+        
+        return WinResponse(**response.data[0])
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {str(e)}"
+        )
+
+@router.get("/completions/{completion_id}", response_model=WinCompletionResponse)
+async def get_win_completion_by_id(
+    completion_id: str,
+    current_user: str = Depends(get_current_user)
+):
+    """Get a specific win completion by ID"""
+    try:
+        supabase = get_supabase()
+        
+        response = supabase.table("win_completions").select("*").eq("id", completion_id).eq(
+            "user_id", current_user
+        ).execute()
+        
+        if not response.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Win completion not found"
+            )
+        
+        return WinCompletionResponse(**response.data[0])
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {str(e)}"
+        )
