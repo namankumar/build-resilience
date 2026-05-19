@@ -10,18 +10,18 @@ The core of this project is a purpose-built multi-agent system where specialized
 
 ```mermaid
 graph TB
-    User[User Creates Reflection\nContent + Mood Intensity 1-10]
+    User["User Creates Reflection<br/>Content + Mood Intensity 1-10"]
 
-    ReframeAgent[Reframe Agent\nreframe_agent.py\nClaude Haiku]
-    WinAgent[Win Generator\nwin_generator.py\nGPT-4o Mini]
-    ChatAgent[Chat Assistant\nchat_assistant.py\nClaude Sonnet]
-    MoodAgent[Mood Detector\nmood_detector.py\nClaude Haiku]
+    ReframeAgent["Reframe Agent<br/>reframe_agent.py<br/>Claude Haiku"]
+    WinAgent["Win Generator<br/>win_generator.py<br/>GPT-4o Mini"]
+    ChatAgent["Chat Assistant<br/>chat_assistant.py<br/>Claude Sonnet"]
+    MoodAgent["Mood Detector<br/>mood_detector.py<br/>Claude Haiku"]
 
-    Database[Supabase Database\nUser Data + AI Responses]
+    Database["Supabase Database<br/>User Data + AI Responses"]
 
-    ReframeResponse[Therapeutic Reframe\nCompassionate 2-4 sentence response]
-    WinSuggestions[Personalized Micro-Wins\n2-5 minute actions as structured JSON]
-    ChatResponse[Dynamic Chat\nListen or Nudge mode based on mood]
+    ReframeResponse["Therapeutic Reframe<br/>Compassionate 2-4 sentence response"]
+    WinSuggestions["Personalized Micro-Wins<br/>2-5 minute actions as structured JSON"]
+    ChatResponse["Dynamic Chat<br/>Listen or Nudge mode based on mood"]
 
     User --> ReframeAgent
     User --> WinAgent
