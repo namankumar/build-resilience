@@ -1,4 +1,4 @@
-# Resilience App
+# Build Resilience
 
 A mobile app that uses a **multi-agent AI pipeline** to help you accomplish hard goals by managing your behavior and mental distractions. Skipped the gym again, spent two hours doom-scrolling instead of working on your startup, or can't break out of a procrastination spiral? Log the slip, and the app's AI agents stop the mental spiral, reframe the setback, and get you back on track with a concrete next step. Built with React Native (Expo) on the frontend and a Python FastAPI backend with four specialized AI agents.
 
