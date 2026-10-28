@@ -1,6 +1,20 @@
 # Build Resilience
 
-A mobile app that uses a **multi-agent AI pipeline** to help you accomplish hard goals by managing your behavior and mental distractions. Skipped the gym again, spent two hours doom-scrolling instead of working on your startup, or can't break out of a procrastination spiral? Log the slip, and the app's AI agents stop the mental spiral, reframe the setback, and get you back on track with a concrete next step. Built with React Native (Expo) on the frontend and a Python FastAPI backend with four specialized AI agents.
+An AI reflection prototype that turns a setback into a reframe and a small next action. A FastAPI backend coordinates four specialized agents for mood analysis, reframing, action suggestions and chat. The original client was built in React Native/Expo.
+
+## Repository status
+
+The implementation history is from June 2025. The root architecture overview and the rename to Build Resilience were added in May 2026; they do not represent a new 2026 build or a live service.
+
+The repository currently contains two different implementation tracks:
+
+| Path | What it contains | Status |
+|---|---|---|
+| `resilience-backend/` | The multi-agent FastAPI backend described below, with Supabase and model-provider integrations. | The current architecture reference in this repository. |
+| `ResilienceApp/` | A Gitlink to the intended React Native client. | The Gitlink is present, but this repository has no `.gitmodules` mapping, so a fresh clone cannot retrieve this client. |
+| `backend/` + `frontend/` | An earlier, lightweight FastAPI/Expo demo using in-memory data. | Separate from the multi-agent backend; its routes and setup should not be assumed compatible with `resilience-backend/`. |
+
+No hosted demo or current production deployment is represented here.
 
 ---
 
@@ -19,7 +33,7 @@ graph TB
 
     Database["Supabase Database<br/>User Data + AI Responses"]
 
-    ReframeResponse["Therapeutic Reframe<br/>Compassionate 2-4 sentence response"]
+    ReframeResponse["Supportive Reframe<br/>2-4 sentence response"]
     WinSuggestions["Personalized Micro-Wins<br/>2-5 minute actions as structured JSON"]
     ChatResponse["Dynamic Chat<br/>Listen or Nudge mode based on mood"]
 
@@ -144,16 +158,19 @@ else:
 
 ---
 
-## Quick Start
+## Local setup: backend reference
+
+This path starts only the `resilience-backend/` API. The intended React Native client is not retrievable from a fresh clone because of the missing submodule mapping above.
 
 ### Backend
 
 ```bash
 cd resilience-backend
-source venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 
-# Copy and fill in API keys
+# Copy and fill in the service configuration
 cp .env.example .env
 
 # Run dev server
@@ -168,30 +185,11 @@ ANTHROPIC_API_KEY=
 OPENAI_API_KEY=
 ```
 
-### Frontend
+`GET /health` can start without service credentials. Authenticated flows, stored data, and model-backed responses require a configured Supabase project (including the schema in `create_database_tables.sql`) plus valid provider keys. Model-provider calls may incur cost.
 
-```bash
-cd ResilienceApp
-npm install
-npm run web      # or: npm run ios / npm run android
-```
+### Tests and demos
 
-Required env vars in `ResilienceApp/.env`:
-```
-EXPO_PUBLIC_SUPABASE_URL=
-EXPO_PUBLIC_SUPABASE_ANON_KEY=
-EXPO_PUBLIC_API_URL=
-```
-
-### Run Tests
-
-```bash
-# Backend API + AI service tests
-cd resilience-backend && ./run_tests.sh
-
-# Agentic E2E tests (requires Playwright + API keys)
-python test_agentic_e2e.py
-```
+The repository includes historical shell runners and an agentic E2E script. They are not a verified, credential-free test path: they install dependencies, expect the unavailable `ResilienceApp/` client, and the agentic script may call a model provider. Inspect and adapt them before running; no current passing E2E result is claimed by this README.
 
 ---
 
